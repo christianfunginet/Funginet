@@ -22,4 +22,4 @@ Para la version M5Stack Core 2:<br>
 
 # Conexion de las Salidas
 
-<img src="https://github.com/christianfunginet/Funginet/blob/main/M5Stack%20Conexion/Salidas.png" alt="Conexion" width="800" height="500"><br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/M5Stack%20Conexion/salidas.png" alt="Conexion" width="800" height="500"><br>
