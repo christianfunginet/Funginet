@@ -11,6 +11,6 @@ Descargar la app para cellular de este link https://drive.google.com/drive/folde
 Hardware:<br>
 Para la version M5Stack Core 2:<br>
 1- M5Stack Core2<br>
-1- ENV II<br>
+1- <a href="https://m5stack.com/products/env-ii-unit?_pos=2&_sid=770980b33&_ss=r" ENV II><br>
 1- TVOC<br>
 1- 4 Ralay<br>
