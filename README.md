@@ -15,3 +15,4 @@ Para la version M5Stack Core 2:<br>
 1- <a href="https://m5stack.com/products/env-ii-unit?_pos=2&_sid=770980b33&_ss=r"> ENV II</a><br>
 1- <a href="https://m5stack.com/products/tvoc-eco2-gas-unit-sgp30?_pos=1&_sid=7f563d33a&_ss=r">TVOC</a><br>
 1- <a href="https://m5stack.com/products/4-relay-unit?_pos=1&_sid=06930ee08&_ss=r"> 4 Ralay</a><br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/M5Stack%20Conexion/conexion.png" alt="Conexion" width="500" height="600">
