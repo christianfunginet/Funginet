@@ -1,10 +1,10 @@
 # Funginet
-Sistema gratis de control y monitoreo para el cultivo de hongos.
+Sistema gratis de control y monitoreo para el cultivo de hongos.<br>
 # Requisitos
 Software<br>
 <br>
-<a href="https://www.arduino.cc/en/software">Arduino IDE</a>
-<a href="https://docs.m5stack.com/#/en/quick_start/m5core/m5stack_core_get_started_Arduino_Windows?id=_4-install-m5stack-library">M5Stack Arduino Guia de instalacion</a>
+<a href="https://www.arduino.cc/en/software">Arduino IDE</a><br>
+<a href="https://docs.m5stack.com/#/en/quick_start/m5core/m5stack_core_get_started_Arduino_Windows?id=_4-install-m5stack-library">M5Stack Arduino Guia de instalacion</a><br>
 Copiar todas las librerias de este repositorio en C:\Program Files (x86)\Arduino\libraries<br>
 Descargar el archivo main de la carpeta arduino de este repositorio.<br>
 Descargar la app para cellular de <a href="https://drive.google.com/drive/folders/1rASsEZAjLJQ4PqG6WquGLhOPXpzdif9D?usp=sharing">APP</a><br>
