@@ -15,6 +15,7 @@ Para la version M5Stack Core 2:<br>
 1- <a href="https://m5stack.com/products/env-ii-unit?_pos=2&_sid=770980b33&_ss=r"> ENV II</a><br>
 1- <a href="https://m5stack.com/products/tvoc-eco2-gas-unit-sgp30?_pos=1&_sid=7f563d33a&_ss=r">TVOC</a><br>
 1- <a href="https://m5stack.com/products/4-relay-unit?_pos=1&_sid=06930ee08&_ss=r"> 4 Ralay</a><br>
+1- <a href="https://m5stack.com/products/mini-hub-module?_pos=1&_sid=a865ff7c9&_ss=r">Hub 1 a 3</a><br>
 
 
 # Conexion del M5Stack
