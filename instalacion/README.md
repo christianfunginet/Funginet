@@ -35,7 +35,17 @@ https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_in
 
 Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos con las librerias particulares de este proyecto.<br><br>
 # Instalacion de Librerias desde este repositorio
-1- Descargar las librerias del repositorio y copiarlas en el directorio libraries de la carpeta Arduino o en el directorio libraries de documentos/Arduino<br>
+1- Descargar las librerias del repositorio y copiarlas en el directorio libraries de la carpeta Arduino o en el directorio libraries de documentos/Arduino<br><br>
+Estas son las librerias necesarias:<br>
+
+1-Adafruit_BMP280_Library
+2-ENV_II_LIB
+3-PubSubClient
+4-TVOC_SGP30_LIB
+5-separador
+6-DHT_sensor_library
+
+
 
 # Instalacion de Librerias Adafruit sgp30 Sensor<br>
 
@@ -50,6 +60,28 @@ Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos 
 <img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit BMP280" width="800" height="500"><br>
 
 2- Buscar "Adafruit BMP280" en la ventana de librerias, una vez encontrada presionar "Install" Aceptal ALL si lo pide<br>
+
+# Instalacion de Librerias SHT3X<br>
+
+1- Seleccionar "Sketch->Include Library:->Manage Libraries"<br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit BMP280" width="800" height="500"><br>
+
+2- Buscar "Adafruit SHT3" en la ventana de librerias, una vez encontrada presionar "Install" Aceptal ALL si lo pide<br>
+
+# Instalacion de Librerias PubSubclient<br>
+
+1- Seleccionar "Sketch->Include Library:->Manage Libraries"<br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit BMP280" width="800" height="500"><br>
+
+2- Buscar "PubSubclient" by Nick O'Leary en la ventana de librerias, una vez encontrada presionar "Install"<br>
+
+# Instalacion de Librerias DHT<br>
+
+1- Seleccionar "Sketch->Include Library:->Manage Libraries"<br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit BMP280" width="800" height="500"><br>
+
+2- Buscar "DHT" by Adafruit en la ventana de librerias, una vez encontrada presionar "Install"<br>
+
 
 
 
