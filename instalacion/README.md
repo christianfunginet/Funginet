@@ -35,7 +35,7 @@ https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_in
 
 Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos con las librerias particulares de este proyecto.<br><br>
 # Instalacion de Librerias desde este repositorio
-1- Descargar las librerias del repositorio y copiarlas yn el directorio libraries de la carpeta Arduino<br>
+1- Descargar las librerias del repositorio y copiarlas en el directorio libraries de la carpeta Arduino o en el directorio libraries de documentos/Arduino<br>
 
 # Instalacion de Librerias Adafruit sgp30 Sensor<br>
 
