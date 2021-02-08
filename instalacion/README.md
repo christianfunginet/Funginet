@@ -30,10 +30,26 @@ https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_in
 1- Seleccionar "Sketch->Include Library:->Manage Libraries"<br>
 <img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria M5Stack" width="800" height="500"><br>
 
-2- Buscar M5Core2 by M5Stack en la ventana de librerias, una vez encontrada presionar "Install"<br>
+2- Buscar "M5Core2" by M5Stack en la ventana de librerias, una vez encontrada presionar "Install"<br>
 <img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/install_library.webp" alt="Instalacion de Libreria M5Stack" width="800" height="500"><br>
 
 Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos con las librerias particulares de este proyecto.<br><br>
+
+# Instalacion de Librerias Adafruit sgp30 Sensor<br>
+
+1- Seleccionar "Sketch->Include Library:->Manage Libraries"<br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit sgp30 Sensor" width="800" height="500"><br>
+
+2- Buscar "Adafruit sgp30 Sensor" en la ventana de librerias, una vez encontrada presionar "Install" Aceptal ALL si lo pide<br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/install_library.webp" alt="Instalacion de Libreria Adafruit sgp30 Sensor" width="800" height="500"><br>
+
+# Instalacion de Librerias Adafruit BMP280<br>
+
+1- Seleccionar "Sketch->Include Library:->Manage Libraries"<br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit BMP280" width="800" height="500"><br>
+
+2- Buscar "Adafruit BMP280" en la ventana de librerias, una vez encontrada presionar "Install" Aceptal ALL si lo pide<br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/install_library.webp" alt="Instalacion de Libreria Adafruit BMP280" width="800" height="500"><br>
 
 
 
