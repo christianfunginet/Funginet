@@ -34,6 +34,8 @@ https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_in
 <img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/install_library.webp" alt="Instalacion de Libreria M5Stack" width="800" height="500"><br>
 
 Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos con las librerias particulares de este proyecto.<br><br>
+# Instalacion de Librerias desde este repositorio
+1- Descargar las librerias del repositorio y copiarlas yn el directorio libraries de la carpeta Arduino<br>
 
 # Instalacion de Librerias Adafruit sgp30 Sensor<br>
 
@@ -41,7 +43,6 @@ Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos 
 <img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit sgp30 Sensor" width="800" height="500"><br>
 
 2- Buscar "Adafruit sgp30 Sensor" en la ventana de librerias, una vez encontrada presionar "Install" Aceptal ALL si lo pide<br>
-<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/install_library.webp" alt="Instalacion de Libreria Adafruit sgp30 Sensor" width="800" height="500"><br>
 
 # Instalacion de Librerias Adafruit BMP280<br>
 
@@ -49,7 +50,6 @@ Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos 
 <img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit BMP280" width="800" height="500"><br>
 
 2- Buscar "Adafruit BMP280" en la ventana de librerias, una vez encontrada presionar "Install" Aceptal ALL si lo pide<br>
-<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/install_library.webp" alt="Instalacion de Libreria Adafruit BMP280" width="800" height="500"><br>
 
 
 
