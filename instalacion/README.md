@@ -36,3 +36,4 @@ https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_in
 Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos con las librerias particulares de este proyecto.<br><br>
 
 
+
