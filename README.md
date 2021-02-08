@@ -28,3 +28,7 @@ Para la version M5Stack Core 2:<br>
 # Conexion de las Salidas
 
 <img src="https://github.com/christianfunginet/Funginet/blob/main/M5Stack%20Conexion/cableado.png" alt="Conexion" width="800" height="500"><br>
+
+# APP<br>
+Descargue e instale la APP de este link <a href="https://drive.google.com/drive/folders/1rASsEZAjLJQ4PqG6WquGLhOPXpzdif9D?usp=sharing">APP</a>.<br>
+Con la APP podra configurar y controlar el dispositivo.
