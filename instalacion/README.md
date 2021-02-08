@@ -46,7 +46,10 @@ Estas son las librerias necesarias:<br>
 6-DHT_sensor_library<br>
 
 Ahora conecte el M5Stack en algun puerto USB.<br>
-Seleccione el puerto USB desde "Tools->Port:->".<br>
+Seleccione el puerto USB desde "Sketch->Compile".<br>
+Si todo va bien deberia aparecer un mensaje como este.<br>
+
+<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/ok.png" alt="Instalacion de Libreria M5Stack" width="400" height="250"><br>
 Presione Subir para cargar el programa al M5Stack y listo.<br>
 
 Si lo prefiere puede instalar las librerias desde el administrador de librerias como se detalla a continuacion.<br>
