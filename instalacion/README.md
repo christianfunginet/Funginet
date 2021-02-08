@@ -8,8 +8,8 @@ Sistema gratis de control y monitoreo para el cultivo de hongos.<br>
 
 # Instalacion de placa M5Stack<br>
 <br>
-Una vez instalado el IDE de Arduino abrir el programa.
-1- Abrir la pestaña "File->Peferences->Settings"<br><br>
+Una vez instalado el IDE de Arduino abrir el programa.<br>
+1- Abrir la pestaña "File->Peferences->Settings".<br>
 <img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/Arduino_1.webp" alt="Instalacion de placa M5Stack" width="800" height="500"><br>
 
 2- Copiar el siguiente enlace en "Aditional Board Manager URL"<br>
@@ -30,8 +30,9 @@ https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_in
 1- Seleccionar "Sketch->Include Library:->Manage Libraries"<br>
 <img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria M5Stack" width="800" height="500"><br>
 
-2- Buscar M5Core2 en la ventana de librerias, una vez encontrada presionar "Install"<br>
+2- Buscar M5Core2 by M5Stack en la ventana de librerias, una vez encontrada presionar "Install"<br>
 <img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/install_library.webp" alt="Instalacion de Libreria M5Stack" width="800" height="500"><br>
 
-Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos con las librerias particulares de este proyecto.<br>
+Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos con las librerias particulares de este proyecto.<br><br>
+
 
