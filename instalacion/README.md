@@ -38,19 +38,26 @@ Listo con esto podemos utilizar el M5Stack para cualquier proyecto. Ahora vamos 
 1- Descargar las librerias del repositorio y copiarlas en el directorio libraries de la carpeta Arduino o en el directorio libraries de documentos/Arduino<br><br>
 Estas son las librerias necesarias:<br>
 
-1-Adafruit_BMP280_Library
-2-ENV_II_LIB
-3-PubSubClient
-4-TVOC_SGP30_LIB
-5-separador
-6-DHT_sensor_library
+1-Adafruit_BMP280_Library<br>
+2-ENV_II_LIB<br>
+3-PubSubClient<br>
+4-TVOC_SGP30_LIB<br>
+5-separador<br>
+6-DHT_sensor_library<br>
 
+Ahora conecte el M5Stack en algun puerto USB.<br>
+Seleccione el puerto USB desde "Tools->Port:->".<br>
+Presione Subir para cargar el programa al M5Stack y listo.<br>
+
+Si lo prefiere puede instalar las librerias desde el administrador de librerias como se detalla a continuacion.<br>
+Todas las librerias estan disponibles salvo "sapara" que es una libreria propiedad de Ioticos<br>
+Esta debe copiarse de forma manual.<br>
 
 
 # Instalacion de Librerias Adafruit sgp30 Sensor<br>
 
 1- Seleccionar "Sketch->Include Library:->Manage Libraries"<br>
-<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit sgp30 Sensor" width="800" height="500"><br>
+<img src="https://github.com/christianfunginet/Funginet/blob/main/instalacion/manage_libraries.webp" alt="Instalacion de Libreria Adafruit sgp30 Sensor" width="400" height="250"> <br>
 
 2- Buscar "Adafruit sgp30 Sensor" en la ventana de librerias, una vez encontrada presionar "Install" Aceptal ALL si lo pide<br>
 
