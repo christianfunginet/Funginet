@@ -149,6 +149,10 @@ struct {
   unsigned int PASSBTSEND:1;
   unsigned int HOSTBTSEND:1;
   unsigned int NEWLIMIT:1;
+  unsigned int SW1:1;
+  unsigned int SW2:1;
+  unsigned int SW3:1;
+  unsigned int SW4:1;
   
   
   
@@ -330,6 +334,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         int index=inputString.lastIndexOf("]OK");
         inputString.remove(index);
         index=inputString.lastIndexOf("[");
+        ProgFlags.SW1=sw1;
         sw1=(inputString.substring(index+1)).toInt();
         Serial.print("SW1_DSET TO");
         Serial.println(sw1);
@@ -339,6 +344,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         int index=inputString.lastIndexOf("]OK");
         inputString.remove(index);
         index=inputString.lastIndexOf("[");
+        ProgFlags.SW2=sw2;
         sw2=(inputString.substring(index+1)).toInt();
         Serial.print("SW2_DSET TO");
         Serial.println(sw2);
@@ -348,6 +354,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         int index=inputString.lastIndexOf("]OK");
         inputString.remove(index);
         index=inputString.lastIndexOf("[");
+        ProgFlags.SW3=sw3;
         sw3=(inputString.substring(index+1)).toInt();
         Serial.print("SW3_DSET TO");
         Serial.println(sw3);
@@ -357,6 +364,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         int index=inputString.lastIndexOf("]OK");
         inputString.remove(index);
         index=inputString.lastIndexOf("[");
+        ProgFlags.SW4=sw4;
         sw4=(inputString.substring(index+1)).toInt();
         Serial.print("SW4_DSET TO");
         Serial.println(sw4);
@@ -406,6 +414,11 @@ void setup() {
   ProgFlags.BTSEND=0;
   ProgFlags.PT100Cal=1;
   ProgFlags.NEWLIMIT=1;
+  ProgFlags.SW1=0;
+  ProgFlags.SW2=0;
+  ProgFlags.SW3=0;
+  ProgFlags.SW4=0;
+                         
   EEPROM.begin(512);
   M5.begin(true,true,true,true);
   M5.Lcd.fillScreen(LCD_BG);
@@ -875,6 +888,7 @@ void loop() {
     if(BtnSW1.wasPressed())
     {
       Serial.println("--- BtnSW1_fn BUTTON WAS PRESSED ---");
+      ProgFlags.SW1=sw1;
       sw1=!sw1;
       WriteRelayNumber(RELAY_CALEFACTOR, sw1); 
       ProgFlags.BTSEND=1;
@@ -882,6 +896,7 @@ void loop() {
     if(BtnSW2.wasPressed())
     {
       Serial.println("--- BtnSW2_fn BUTTON WAS PRESSED ---");
+      ProgFlags.SW2=sw2;
       sw2=!sw2;
       WriteRelayNumber(RELAY_HUMIDIFICADOR, sw2); 
       ProgFlags.BTSEND=1;
@@ -889,6 +904,7 @@ void loop() {
     if(BtnSW3.wasPressed())
     {
       Serial.println("--- BtnSW3_fn BUTTON WAS PRESSED ---");
+      ProgFlags.SW3=sw3;
       sw3=!sw3;
       WriteRelayNumber(RELAY_VENTILADOR, sw3); 
       ProgFlags.BTSEND=1;
@@ -896,6 +912,7 @@ void loop() {
     if(BtnSW4.wasPressed())
     {
       Serial.println("--- BtnSW4_fn BUTTON WAS PRESSED ---");
+      ProgFlags.SW4=sw4;
       sw4=!sw4;
       WriteRelayNumber(RELAY_ENFRIADOR, sw4); 
       ProgFlags.BTSEND=1;
@@ -914,30 +931,53 @@ void loop() {
     oldDeviceConnected = deviceConnected;
   }
 //--------------------------------------------------controls-----------------------------
- 
-  if(temp<mintemp){
-    if(millis()<TimerCalefactor+((CYCLE_CALEFACTOR * DTCY_Calefactor)/100)){
-      swx=1;
+ swx=sw1;
+ if(ProgFlags.SW1==sw1)
+ {       
+    if(temp<mintemp){
+      if(millis()<TimerCalefactor+((CYCLE_CALEFACTOR * DTCY_Calefactor)/100)){
+        swx=1;
+      } else {
+        swx=0;
+      }
+      if(millis()>=TimerCalefactor+CYCLE_CALEFACTOR){
+        if(temp<mintemp){
+          if(DTCY_Calefactor<=95) {
+            DTCY_Calefactor+=5;
+          }
+        } else {
+          if(DTCY_Calefactor>=5){
+            DTCY_Calefactor-=5;
+          }
+        }
+        Serial.println("Fin Calefactor ");
+        TimerCalefactor=millis();
+      }
     } else {
+      TimerCalefactor=millis();
       swx=0;
     }
-    if(millis()>=TimerCalefactor+CYCLE_CALEFACTOR){
-      if(temp<mintemp){
-        if(DTCY_Calefactor<=95) {
-          DTCY_Calefactor+=5;
-        }
-      } else {
-        if(DTCY_Calefactor>=5){
-          DTCY_Calefactor-=5;
-        }
-      }
-      Serial.println("Fin Calefactor ");
+    ProgFlags.SW1=swx;
+  } else {
+    if(millis()-TimerCalefactor>CYCLE_CALEFACTOR)
+    {
+      
       TimerCalefactor=millis();
     }
-  } else {
-    TimerCalefactor=millis();
-    swx=0;
+    else
+    {
+      if(millis()-TimerCalefactor>CYCLE_CALEFACTOR/2)
+      {
+        ProgFlags.SW1=sw1;
+      }
+      else
+      {
+        WriteRelayNumber(RELAY_CALEFACTOR, ProgFlags.SW1); 
+        Serial.println("CALEFACTOR FORZADO " + String(ProgFlags.SW1));
+      }
+    }
   }
+   
   if(swx!=sw1)
   {
     sw1=swx;
@@ -1017,24 +1057,28 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   if(command=="sw1"){
     Serial.println("Sw1 pasa a estado " + incoming);
+    ProgFlags.SW1=sw1;
     sw1 = incoming.toInt();
     WriteRelayNumber(RELAY_CALEFACTOR, sw1); 
   }
 
   if(command=="sw2"){
     Serial.println("Sw2 pasa a estado " + incoming);
+    ProgFlags.SW2=sw2;
     sw2 = incoming.toInt();
     WriteRelayNumber(RELAY_HUMIDIFICADOR, sw2); 
   }
 
  if(command=="sw3"){
     Serial.println("Sw3 pasa a estado " + incoming);
+    ProgFlags.SW3=sw3;
     sw3 = incoming.toInt();
     WriteRelayNumber(RELAY_VENTILADOR, sw3); 
   }
  
  if(command=="sw4"){
     Serial.println("Sw4 pasa a estado " + incoming);
+    ProgFlags.SW4=sw4;
     sw4 = incoming.toInt();
     WriteRelayNumber(RELAY_ENFRIADOR, sw4); 
   }
