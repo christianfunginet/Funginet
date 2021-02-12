@@ -23,13 +23,18 @@
 #include <WiFiClientSecure.h>
 
 
-#include <DHT.h>
-#include "DHT.h"
 
 #define NET_NAME_LENGTH       64 
 #define EEPROM_SSID_ADR       0*NET_NAME_LENGTH
 #define EEPROM_PASS_ADR       1*NET_NAME_LENGTH
 #define EEPROM_ADC_OFF        2*NET_NAME_LENGTH
+
+#define EEPROM_CAL_LIM        EEPROM_ADC_OFF + 10
+#define EEPROM_HUM_LIM        EEPROM_ADC_OFF + 20
+#define EEPROM_TEMP_LIM       EEPROM_ADC_OFF + 30
+#define EEPROM_CO2_LIM        EEPROM_ADC_OFF + 40
+
+
 #define EEPROM_HOST_ADR       3*NET_NAME_LENGTH
 
 char ssid[NET_NAME_LENGTH] = "DIAVERUM";            // your network SSID (name)
@@ -67,12 +72,6 @@ uint8_t txValue = 0;
 //*********** CONFIG **************
 //*********************************
 
-#define DHTPIN G27     // what pin we're connected to
-
-// Uncomment whatever type you're using!
-#define DHTTYPE DHT11   // DHT 11 
-//#define DHTTYPE DHT22   // DHT 22  (AM2302)
-//#define DHTTYPE DHT21   // DHT 21 (AM2301)
 
 #define ADCPIN G35     // what pin we're connected to
 #define MECANICO G13     // what pin we're connected to
@@ -83,6 +82,10 @@ uint8_t txValue = 0;
 #define RELAY_VENTILADOR    2     // Relay del Ventilador
 #define RELAY_ENFRIADOR     3     // Relay del Enfriador
 
+#define CYCLE_CALEFACTOR    2*60*1000 //2min
+#define CYCLE_HUMIDIFICADOR 2*60*1000 //2min
+#define CYCLE_VANTILADOR    2*60*1000 //2min
+#define CYCLE_ENFRIADOR     2*60*1000 //2min
 
 
 
@@ -145,6 +148,7 @@ struct {
   unsigned int SSIDBTSEND:1;
   unsigned int PASSBTSEND:1;
   unsigned int HOSTBTSEND:1;
+  unsigned int NEWLIMIT:1;
   
   
   
@@ -165,7 +169,9 @@ uint32_t chipId = 0;
 //********      GLOBALS         *******
 //*************************************
 char device_topic_subscribe [40]="";
-char device_topic_publish [40]="";
+char device_topic_publish_data [40]="";
+char device_topic_publish_limits [40]="";
+
 char msg[45];
 float temp = 0;
 float hum = 0;
@@ -179,11 +185,29 @@ long TimeToReConnect = 0;
 long TimeToRead = 0;
 long TimeToConnectMQTT=0;
 
+long TimerCalefactor;
+long TimerEnfriador;
+long TimerHumidificador;
+long Timerventilador;
+
+
+byte DTCY_Calefactor=50;
+byte DTCY_Enfriador=50;
+byte DTCY_Humidificador=50;
+byte DTCY_Ventilador=50;
+
+
+
 byte sw1 = 0;
 byte sw2 = 0;
 byte sw3 = 0;
 byte sw4 = 0;
-byte slider = 0;
+byte swx = 0;
+
+int maxtemp = 36;
+int mintemp = 20;
+int minhum = 70;
+int maxco2 = 1000;
 
 long TimeOpticOn = 0;
 long TimeOpticOff = 1000;
@@ -193,7 +217,7 @@ long POW=0;
 #define DTCYTOT 2000
 #define PT100BUFF 10
 byte Batery;
-DHT dht(DHTPIN, DHTTYPE);
+
 Adafruit_SGP30 CO2;
 SHT3X sht30;
 Adafruit_BMP280 bme;
@@ -261,7 +285,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
           
         }
       }
-     if (inputString.startsWith("pass[")) {      //Set pass
+      if (inputString.startsWith("pass[")) {      //Set pass
         int index=inputString.lastIndexOf("]OK");
         inputString.remove(index);
         index=inputString.lastIndexOf("[");
@@ -302,7 +326,6 @@ class MyCallbacks: public BLECharacteristicCallbacks {
          
         }
       }
-      
       if (inputString.startsWith("sw1[")) {      //Set SW1
         int index=inputString.lastIndexOf("]OK");
         inputString.remove(index);
@@ -382,7 +405,7 @@ void setup() {
   ProgFlags.NETSAVED=0;
   ProgFlags.BTSEND=0;
   ProgFlags.PT100Cal=1;
-  
+  ProgFlags.NEWLIMIT=1;
   EEPROM.begin(512);
   M5.begin(true,true,true,true);
   M5.Lcd.fillScreen(LCD_BG);
@@ -394,7 +417,7 @@ void setup() {
   serial_number=String(chipId);  
  
   delay(1000);
-  dht.begin();
+ 
   
   M5.Lcd.drawString("Sensor CO2", 10, 30, 4);
   if (! CO2.begin()){
@@ -518,7 +541,18 @@ void setup() {
   readRelayReg(0x11);
   WriteRelayReg(0x10,1);
   WriteRelayReg(0x11,0);
+  
+  Read_Int(EEPROM_CAL_LIM,maxtemp);
+  Read_Int(EEPROM_HUM_LIM,mintemp);
+  Read_Int(EEPROM_TEMP_LIM,minhum);
+  Read_Int(EEPROM_CO2_LIM,maxco2);
+  TimerCalefactor=millis();
+  TimerEnfriador=millis();
+  TimerHumidificador=millis();
+  Timerventilador=millis();
 
+
+  
   delay(1000);
   
   
@@ -599,12 +633,21 @@ void loop() {
     
     
         if(mqttclient.connected()){
-         String to_send = String((int)temp) + "," + String((int)hum) + ","+ String((int)co2) + ","+ String((int)Batery) + "," + String(sw1)+","+ String(sw2)+","+ String(sw3)+","+ String(sw4);
-          Serial.print("SENDING  MQTT");
-          Serial.println(to_send);
-          to_send.toCharArray(msg,20);
-          mqttclient.publish(device_topic_publish,msg);
-    
+          String to_send =String((int)temp) + "," + String((int)hum) + ","+ String((int)co2) + ","+ String((int)Batery) + "," + String(sw1)+","+ String(sw2)+","+ String(sw3)+","+ String(sw4);
+        //  Serial.print("SENDING  Data MQTT");
+        //  Serial.println(to_send);
+          to_send.toCharArray(msg,30);
+          mqttclient.publish(device_topic_publish_data,msg);
+          if(ProgFlags.NEWLIMIT)
+          {
+            to_send = String((int)maxtemp) + "," + String((int)mintemp) + ","+ String((int)minhum) + ","+ String((int)maxco2);
+            Serial.print("SENDING  Limits MQTT");
+            Serial.println(to_send);
+            to_send.toCharArray(msg,30);
+            mqttclient.publish(device_topic_publish_limits,msg);
+            ProgFlags.NEWLIMIT=0;
+          }
+          
           
         }
       }
@@ -673,26 +716,25 @@ void loop() {
     }
     if(sht30.get()==0){
    
-    //ReadValue = dht.readHumidity();
     ReadValue =sht30.humidity;
     if(SensorTrueValue(ReadValue,100.0,0.0))
       hum=ReadValue;
     
-    //ReadValue = dht.readTemperature();
     ReadValue = sht30.cTemp;
     if(SensorTrueValue(ReadValue,150.0,-20.0))
       temp=ReadValue;
     }
     else
     {
-      Serial.println("TEMP HUM Measurement failed");
+  //    Serial.println("TEMP HUM Measurement failed");
       hum =random(0,100);
-      temp =random(70,90);
+      temp =30;
+      //temp =random(20,40);
       
     }
     if (! CO2.IAQmeasure()) {
       co2=random(1000,3000);
-      Serial.println("CO2 Measurement failed");
+  //    Serial.println("CO2 Measurement failed");
     }
     else
     {
@@ -855,8 +897,7 @@ void loop() {
     {
       Serial.println("--- BtnSW4_fn BUTTON WAS PRESSED ---");
       sw4=!sw4;
-      WriteRelayNumber(RELAY_ENFRIADOR, sw3); 
-      
+      WriteRelayNumber(RELAY_ENFRIADOR, sw4); 
       ProgFlags.BTSEND=1;
     }
   }
@@ -872,7 +913,68 @@ void loop() {
     // do stuff here on connecting
     oldDeviceConnected = deviceConnected;
   }
-
+//--------------------------------------------------controls-----------------------------
+ 
+  if(temp<mintemp){
+    if(millis()<TimerCalefactor+((CYCLE_CALEFACTOR * DTCY_Calefactor)/100)){
+      swx=1;
+    } else {
+      swx=0;
+    }
+    if(millis()>=TimerCalefactor+CYCLE_CALEFACTOR){
+      if(temp<mintemp){
+        if(DTCY_Calefactor<=95) {
+          DTCY_Calefactor+=5;
+        }
+      } else {
+        if(DTCY_Calefactor>=5){
+          DTCY_Calefactor-=5;
+        }
+      }
+      Serial.println("Fin Calefactor ");
+      TimerCalefactor=millis();
+    }
+  } else {
+    TimerCalefactor=millis();
+    swx=0;
+  }
+  if(swx!=sw1)
+  {
+    sw1=swx;
+    WriteRelayNumber(RELAY_CALEFACTOR, sw1); 
+    Serial.println("CALEFACTOR " + String(sw1));
+  }
+ 
+  if(temp>maxtemp){
+    if(millis()<TimerEnfriador+((CYCLE_ENFRIADOR * DTCY_Enfriador)/100)){
+      swx=1;
+    } else {
+      swx=0;
+    }
+    if(millis()>=TimerEnfriador+CYCLE_ENFRIADOR){
+      if(temp>maxtemp){
+        if(DTCY_Enfriador<=95) {
+          DTCY_Enfriador+=5;
+        }
+      } else {
+        if(DTCY_Enfriador>=5){
+          DTCY_Enfriador-=5;
+        }
+      }
+      Serial.println("Fin Enfriador ");
+      TimerEnfriador=millis();
+    }
+  } else {
+    TimerEnfriador=millis();
+    swx=0;
+  }
+  if(swx!=sw4)
+  {
+    sw4=swx;
+    WriteRelayNumber(RELAY_ENFRIADOR, sw4); 
+    Serial.println("ENFRIADOR " + String(sw4));
+  }
+  
   ProgFlags.VCIN=M5.Axp.isACIN();
  
 }
@@ -900,7 +1002,7 @@ void Btna_fcn(void)
 
 void callback(char* topic, byte* payload, unsigned int length) {
   String incoming = "";
-	Serial.print("Mensaje recibido desde tÃ³pico -> ");
+	Serial.print("Mensaje recibido desde topico -> ");
 	Serial.print(topic);
 	Serial.println("");
 	for (int i = 0; i < length; i++) {
@@ -917,32 +1019,51 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.println("Sw1 pasa a estado " + incoming);
     sw1 = incoming.toInt();
     WriteRelayNumber(RELAY_CALEFACTOR, sw1); 
-     
   }
 
   if(command=="sw2"){
     Serial.println("Sw2 pasa a estado " + incoming);
     sw2 = incoming.toInt();
     WriteRelayNumber(RELAY_HUMIDIFICADOR, sw2); 
-     
   }
+
  if(command=="sw3"){
     Serial.println("Sw3 pasa a estado " + incoming);
     sw3 = incoming.toInt();
     WriteRelayNumber(RELAY_VENTILADOR, sw3); 
-     
   }
+ 
  if(command=="sw4"){
     Serial.println("Sw4 pasa a estado " + incoming);
     sw4 = incoming.toInt();
     WriteRelayNumber(RELAY_ENFRIADOR, sw4); 
-     
   }
 
   if(command=="slider"){
     Serial.println("Slider pasa a estado " + incoming);
-    slider = incoming.toInt();
+    maxtemp = incoming.toInt();
+    Save_Int(EEPROM_CAL_LIM,maxtemp);
+    ProgFlags.NEWLIMIT=1;
   }
+  if(command=="slider1"){
+    Serial.println("Slider1 pasa a estado " + incoming);
+    mintemp = incoming.toInt();
+    Save_Int(EEPROM_HUM_LIM,mintemp);
+    ProgFlags.NEWLIMIT=1;
+  }
+  if(command=="slider2"){
+    Serial.println("Slider2 pasa a estado " + incoming);
+    minhum = incoming.toInt();
+    Save_Int(EEPROM_TEMP_LIM,minhum);
+    ProgFlags.NEWLIMIT=1;
+  }
+  if(command=="slider3"){
+    Serial.println("Slider3 pasa a estado " + incoming);
+    maxco2 = incoming.toInt();
+    Save_Int(EEPROM_CO2_LIM,maxco2);
+    ProgFlags.NEWLIMIT=1;
+  }
+  
   ProgFlags.BTSEND=1;
       
 }
@@ -950,7 +1071,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void reconnect() {
 
 //	while (!mqttclient.connected()) {
-		Serial.print("Intentando conexiÃ³n MQTT SSL");
+		Serial.print("Intentando conexion MQTT SSL");
 		// we create client id
 		String clientId = "esp32_ia_";
 		clientId += String(random(0xffff), HEX);
@@ -962,7 +1083,7 @@ void reconnect() {
 			mqttclient.subscribe(device_topic_subscribe);
 
 		} else {
-			Serial.print("fallÃ³ :( con error -> ");
+			Serial.print("fallo :( con error -> ");
 			Serial.print(mqttclient.state());
 			Serial.println(" Intentamos de nuevo en 5 segundos");
 
@@ -976,9 +1097,9 @@ bool get_topic(int length){
   Serial.println("\nIniciando conexion segura para obtener topico raiz...");
 
   if (!client2.connect(server, 443)) {
-    Serial.println("FallÃ³ conexiÃ³n!");
+    Serial.println("Fallo conexion!");
   }else {
-    Serial.println("Conectados a servidor para obtener tÃ³pico - ok");
+    Serial.println("Conectados a servidor para obtener topico - ok");
     // Make a HTTP request:
     String data = "gdp="+String(get_data_password)+"&sn="+String(serial_number)+"\r\n";
     String HTML=(String("POST ") + "/app/getdata/gettopics" + " HTTP/1.1\r\n" +\
@@ -1008,19 +1129,23 @@ bool get_topic(int length){
 
 
 
-    Serial.println("El tÃ³pico es: " + temporal_topic);
+    Serial.println("El topico es: " + temporal_topic);
     Serial.println("El user MQTT es: " + temporal_user);
     Serial.println("La pass MQTT es: " + temporal_password);
-    Serial.println("La cuenta del tÃ³pico obtenido es: " + String(temporal_topic.length()));
+    Serial.println("La cuenta del topico obtenido es: " + String(temporal_topic.length()));
 
     if (temporal_topic.length()==length){
-      Serial.println("El largo del tÃ³pico es el esperado: " + String(temporal_topic.length()));
+      Serial.println("El largo del topico es el esperado: " + String(temporal_topic.length()));
 
       String temporal_topic_subscribe = temporal_topic + "/actions/#";
       temporal_topic_subscribe.toCharArray(device_topic_subscribe,40);
       Serial.println(device_topic_subscribe);
       String temporal_topic_publish = temporal_topic + "/data";
-      temporal_topic_publish.toCharArray(device_topic_publish,40);
+      temporal_topic_publish.toCharArray(device_topic_publish_data,40);
+      
+      temporal_topic_publish = temporal_topic + "/limits";
+      temporal_topic_publish.toCharArray(device_topic_publish_limits,40);
+      
       temporal_user.toCharArray(mqtt_user,20);
       temporal_password.toCharArray(mqtt_pass,20);
 
@@ -1040,7 +1165,7 @@ void send_to_database(){
   Serial.println("Iniciando conexion segura para enviar a base de datos...");
 
   if (!client2.connect(server, 443)) {
-    Serial.println("FallÃ³ conexiÃ³n!");
+    Serial.println("Fallo conexion!");
   }else {
     Serial.println("Conectados a servidor para insertar en db - ok");
     // Make a HTTP request:
@@ -1134,7 +1259,7 @@ void ShowActuatorsValues(short int X, short int Y)
   SwitchOnOff(180,80,sw3);
   M5.Lcd.drawString("OUT4", 250, 50, 4);
   SwitchOnOff(260,80,sw4);
-  M5.Lcd.progressBar(10,120,300,20,(slider*100)/255);  
+  M5.Lcd.progressBar(10,120,300,20,(maxtemp*100)/255);  
  }
 void SwitchOnOff(unsigned int X,unsigned int Y,bool ON)
 {
@@ -1151,31 +1276,7 @@ void SwitchOnOff(unsigned int X,unsigned int Y,bool ON)
     
 }
 
-/*
-void BtnSW1_fn(TouchEvent& e){
-    Serial.println("--- BtnSW1_fn BUTTON WAS PRESSED ---");
-  sw1=!sw1;
-  SendSwxBT();
-}
-void BtnSW2_fn(TouchEvent& e){
-    Serial.println("--- BtnSW2_fn BUTTON WAS PRESSED ---");
 
-  sw2=!sw2;
-  SendSwxBT();
-}
-void BtnSW3_fn(TouchEvent& e){
-    Serial.println("--- BtnSW3_fn BUTTON WAS PRESSED ---");
-
-  sw3=!sw3;
-  SendSwxBT();
-}
-void BtnSW4_fn(TouchEvent& e){
-    Serial.println("--- BtnSW4_fn BUTTON WAS PRESSED ---");
-
-  sw4=!sw4;
-  SendSwxBT();
-}
-*/
 bool GetExternalIP()
 {
   WiFiClient client;
@@ -1253,12 +1354,12 @@ bool Read_Int(unsigned int ADR, int &DATA)
   Serial.print("EEPROM READ INT:  ");
   for(int a=0;a<10;a++){
     buf[a]=EEPROM.read(ADR+a);
-    Serial.print(buf[a]);
+ //   Serial.print(buf[a]);
   }
   delay(2000);
   DATA= atoi( buf);
   
-  Serial.print("EEPROM READ INT:  ");
+  Serial.print("EEPROM READ RESULT:  ");
   Serial.println(DATA);
   return true;
 }
@@ -1284,11 +1385,7 @@ void SendSwxBT(void)
     pTxCharacteristic->notify();
     Serial.println(txString);
   }
-  else
-  {
-      Serial.println("SENDING  BT  NOT CONNECTED");
   
-  }
 } 
 void SendSSIDBT(void)
 {
