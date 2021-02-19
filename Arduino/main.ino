@@ -1,3 +1,17 @@
+/*
+ * Programa de control automatico
+ * Ajuste los tiempos de cada actuador dependiendo de sus necesidades. 
+ * Por defecto van en 2 minutos lo que significa que cada proceso dura dos minuto y dependiendo del ciclo de trabajo 
+ * sera el tiempo que esten encendidos y apagados los actuadores. Si esta en 2 minutos y el ciclo de trabajo es de 50% encendera 1 minuto 
+ * y se apagara 1 minuto.
+ * Cada proceso es independiente y puede contener cualquier valor
+ */
+#define TiempoCalefactor     2     // minutos que dura cada proceso de calefaccion.
+#define TiempoHumidificador  2     // minutos que dura cada proceso de humidificador.
+#define TiempoVentilador     2     // minutos que dura cada proceso de ventilador.
+#define TiempoEnfriador      2     // minutos que dura cada proceso de enfriador.
+
+
 
 #include <M5Core2.h>
 #include <driver/i2s.h>
@@ -37,9 +51,9 @@
 
 #define EEPROM_HOST_ADR       3*NET_NAME_LENGTH
 
-char ssid[NET_NAME_LENGTH] = "DIAVERUM";            // your network SSID (name)
-char pass[NET_NAME_LENGTH] = "barracas448";        // your network password
-char host[NET_NAME_LENGTH] = "funginet.000webhostapp.com";        // your network password
+char ssid[NET_NAME_LENGTH] = "";                          // your network SSID (name)
+char pass[NET_NAME_LENGTH] = "";                          // your network password
+char host[NET_NAME_LENGTH] = "";                          // Aplication Host
 
 
 //*********************************
@@ -60,50 +74,39 @@ uint8_t txValue = 0;
 #define CHARACTERISTIC_UUID_RX      "d1ce0b77-ca94-4073-9934-dec9058d33f7"
 #define CHARACTERISTIC_UUID_TX      "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
-#define CHARACTERISTIC_UUID_TX_TEMP "671f67f2-30d4-11eb-adc1-0242ac120002"
-#define CHARACTERISTIC_UUID_TX_HUM  "4a32de02-30d5-11eb-adc1-0242ac120002"
-#define CHARACTERISTIC_UUID_TX_CO2  "5aaca66e-30d5-11eb-adc1-0242ac120002"
-#define CHARACTERISTIC_SWX_TX_CO2   "6a2a4ae2-30d5-11eb-adc1-0242ac120002"
-
-
-
 
 //*********************************
 //*********** CONFIG **************
 //*********************************
 
 
-#define ADCPIN G35     // what pin we're connected to
-#define MECANICO G13     // what pin we're connected to
-#define OPTICO   G14     // what pin we're connected to
+#define ADCPIN    G35     // what pin we're connected to
+#define MECANICO  G13     // what pin we're connected to
+#define OPTICO    G14     // what pin we're connected to
 
 #define RELAY_CALEFACTOR    0     // Relay del Calefactor
 #define RELAY_HUMIDIFICADOR 1     // Relay del Humidificador
 #define RELAY_VENTILADOR    2     // Relay del Ventilador
 #define RELAY_ENFRIADOR     3     // Relay del Enfriador
 
-#define CYCLE_CALEFACTOR    2*60*1000 //2min
-#define CYCLE_HUMIDIFICADOR 2*60*1000 //2min
-#define CYCLE_VANTILADOR    2*60*1000 //2min
-#define CYCLE_ENFRIADOR     2*60*1000 //2min
-
-
+#define CYCLE_CALEFACTOR    TiempoCalefactor*60*1000 
+#define CYCLE_HUMIDIFICADOR TiempoHumidificador*60*1000 
+#define CYCLE_VENTILADOR    TiempoVentilador*60*1000 
+#define CYCLE_ENFRIADOR     TiempoEnfriador*60*1000 
 
 //*********************************
 //*********** BUTTON **************
 //*********************************
-TouchButton BtnSW1 = TouchButton(10, 50, 80, 80, "SW1");
-TouchButton BtnSW2 = TouchButton(90, 50, 80, 80, "SW2");
-TouchButton BtnSW3 = TouchButton(170,50, 80, 80, "SW3");
-TouchButton BtnSW4 = TouchButton(250,50, 80, 80, "SW4");
 
-
+TouchButton BtnSW1 = TouchButton(220, 40, 50, 40, "SW1");
+TouchButton BtnSW2 = TouchButton(220, 90, 50, 40, "SW2");
+TouchButton BtnSW3 = TouchButton(220,140, 50, 40, "SW3");
+TouchButton BtnSW4 = TouchButton(220,160, 50, 40, "SW4");
 
 unsigned int LCD_BG=TFT_BLACK;
 unsigned int TBI_BG=0x5c5c;
 byte LCDTIMER;
-//estos datos deben estar configurador tambiÃ©n en las constantes de tu panel
-// NO USES ESTOS DATOS PON LOS TUYOS!!!!
+
 String serial_number = "111";
 const String insert_password = "121212";
 const String get_data_password = "232323";
@@ -112,14 +115,10 @@ const char*  server = "funginet.000webhostapp.com";
 //MQTT
 const char *mqtt_server = "ioticos.org";
 const int mqtt_port = 8883;
-
-//no completar, el dispositivo se encargarÃ¡ de averiguar quÃ© usuario y quÃ© contraseÃ±a mqtt debe usar.
 char mqtt_user[20] = "";
 char mqtt_pass[20] = "";
-
 const int expected_topic_length = 26;
 
-//WiFiManager wifiManager;
 WiFiClientSecure client;
 PubSubClient mqttclient(client);
 WiFiClientSecure client2;
@@ -153,6 +152,8 @@ struct {
   unsigned int SW2:1;
   unsigned int SW3:1;
   unsigned int SW4:1;
+  unsigned int RELAYS:4;
+  
   
   
   
@@ -192,7 +193,7 @@ long TimeToConnectMQTT=0;
 long TimerCalefactor;
 long TimerEnfriador;
 long TimerHumidificador;
-long Timerventilador;
+long TimerVentilador;
 
 
 byte DTCY_Calefactor=50;
@@ -223,7 +224,7 @@ long POW=0;
 byte Batery;
 
 Adafruit_SGP30 CO2;
-SHT3X sht30;
+SHT3X TempHumSensor;
 Adafruit_BMP280 bme;
   
 String MyIp="";
@@ -418,7 +419,8 @@ void setup() {
   ProgFlags.SW2=0;
   ProgFlags.SW3=0;
   ProgFlags.SW4=0;
-                         
+  ProgFlags.RELAYS=0;  
+                       
   EEPROM.begin(512);
   M5.begin(true,true,true,true);
   M5.Lcd.fillScreen(LCD_BG);
@@ -562,7 +564,7 @@ void setup() {
   TimerCalefactor=millis();
   TimerEnfriador=millis();
   TimerHumidificador=millis();
-  Timerventilador=millis();
+  TimerVentilador=millis();
 
 
   
@@ -727,31 +729,24 @@ void loop() {
         ProgFlags.LCDON=0;
       }    
     }
-    if(sht30.get()==0){
-   
-    ReadValue =sht30.humidity;
-    if(SensorTrueValue(ReadValue,100.0,0.0))
-      hum=ReadValue;
-    
-    ReadValue = sht30.cTemp;
-    if(SensorTrueValue(ReadValue,150.0,-20.0))
-      temp=ReadValue;
+    if(TempHumSensor.get()==0){
+      ReadValue =TempHumSensor.humidity;
+      if(SensorTrueValue(ReadValue,100.0,0.0))
+        hum=ReadValue;
+      ReadValue = TempHumSensor.cTemp;
+      if(SensorTrueValue(ReadValue,150.0,-20.0))
+        temp=ReadValue;
+    } else {
+      hum =random(60,90);
+      //hum=70;
+      temp =random(20,40);
+      //temp =30;
     }
-    else
-    {
-  //    Serial.println("TEMP HUM Measurement failed");
-      hum =random(0,100);
-      temp =30;
-      //temp =random(20,40);
-      
-    }
-    if (! CO2.IAQmeasure()) {
-      co2=random(1000,3000);
-  //    Serial.println("CO2 Measurement failed");
-    }
-    else
-    {
+    if ( CO2.IAQmeasure()) {
       co2=CO2.eCO2;
+    } else {
+      co2=random(400,800);
+      //co2=1344;
     }
     
     PT100Temp=PT100Temp-PT100Read[PT100Ptr];
@@ -781,42 +776,22 @@ void loop() {
         PT100Offset=PT100_Volt;
         Save_Int(EEPROM_ADC_OFF,PT100Offset);
       }
-     
     }
-    //Serial.print("PT100Read:  ");
-    //Serial.println(PT100Temp/10);
     PT100FinalTemp=PT100Temp/(float)40950.0*(float)3.3;
-    //Serial.print("PT100 Volt:  ");
-    //Serial.println(PT100FinalTemp,5);
-    
     PT100FinalTemp=PT100FinalTemp-(float)0.27315;
-    //Serial.print("PT100 CELS:  ");
-    //Serial.println(PT100FinalTemp,5);
-        
-    
     PT100FinalTemp=(PT100FinalTemp*1000);
-
-    //Serial.print("PT100Temp:  ");
-    //Serial.println(PT100FinalTemp);
-    if(ProgFlags.PAGE==3)
-    {
+    if(ProgFlags.PAGE==3){
       LCDTIMER=60;
-      if(PT100Ptr==0)
-      {
-        
-        if( PT100FinalTemp<=80)
-        {
-           RelayBoard(MECANICO, true);
-           if(DTCYON<DTCYTOT)
-           {
+      if(PT100Ptr==0){
+        if( PT100FinalTemp<=80){
+          RelayBoard(MECANICO, true);
+          if(DTCYON<DTCYTOT){
             DTCYON=DTCYON+20;
-           }
+          }
         }
-        if( PT100FinalTemp>=83)
-        {
+        if( PT100FinalTemp>=83){
           RelayBoard(MECANICO, false);
-          if(DTCYON>20)
-          {
+          if(DTCYON>20){
             DTCYON=DTCYON-20;
           }
         }
@@ -837,7 +812,7 @@ void loop() {
   
   M5.update();
   if ( M5.BtnA.wasPressed() ) {
-  Btna_fcn();
+    Btna_fcn();
   }
   if ( M5.BtnB.wasPressed() ) {
     LCDTIMER=60;
@@ -885,32 +860,28 @@ void loop() {
   }
   
   if(ProgFlags.PAGE==2)  {
-    if(BtnSW1.wasPressed())
-    {
+    if(BtnSW1.wasPressed()) {
       Serial.println("--- BtnSW1_fn BUTTON WAS PRESSED ---");
       ProgFlags.SW1=sw1;
       sw1=!sw1;
       WriteRelayNumber(RELAY_CALEFACTOR, sw1); 
       ProgFlags.BTSEND=1;
     }
-    if(BtnSW2.wasPressed())
-    {
+    if(BtnSW2.wasPressed()) {
       Serial.println("--- BtnSW2_fn BUTTON WAS PRESSED ---");
       ProgFlags.SW2=sw2;
       sw2=!sw2;
       WriteRelayNumber(RELAY_HUMIDIFICADOR, sw2); 
       ProgFlags.BTSEND=1;
     }
-    if(BtnSW3.wasPressed())
-    {
+    if(BtnSW3.wasPressed()) {
       Serial.println("--- BtnSW3_fn BUTTON WAS PRESSED ---");
       ProgFlags.SW3=sw3;
       sw3=!sw3;
       WriteRelayNumber(RELAY_VENTILADOR, sw3); 
       ProgFlags.BTSEND=1;
     }
-    if(BtnSW4.wasPressed())
-    {
+    if(BtnSW4.wasPressed()) {
       Serial.println("--- BtnSW4_fn BUTTON WAS PRESSED ---");
       ProgFlags.SW4=sw4;
       sw4=!sw4;
@@ -931,9 +902,9 @@ void loop() {
     oldDeviceConnected = deviceConnected;
   }
 //--------------------------------------------------controls-----------------------------
- swx=sw1;
- if(ProgFlags.SW1==sw1)
- {       
+  //CALEFACTOR 
+  swx=sw1;
+  if(ProgFlags.SW1==sw1){  // Automatico       
     if(temp<mintemp){
       if(millis()<TimerCalefactor+((CYCLE_CALEFACTOR * DTCY_Calefactor)/100)){
         swx=1;
@@ -959,62 +930,177 @@ void loop() {
     }
     ProgFlags.SW1=swx;
   } else {
-    if(millis()-TimerCalefactor>CYCLE_CALEFACTOR)
-    {
-      
+    if(millis()-TimerCalefactor>CYCLE_CALEFACTOR) {
       TimerCalefactor=millis();
-    }
-    else
-    {
-      if(millis()-TimerCalefactor>CYCLE_CALEFACTOR/2)
-      {
+    } else {
+      if(millis()-TimerCalefactor>CYCLE_CALEFACTOR/2) {
         ProgFlags.SW1=sw1;
-      }
-      else
-      {
-        WriteRelayNumber(RELAY_CALEFACTOR, ProgFlags.SW1); 
-        Serial.println("CALEFACTOR FORZADO " + String(ProgFlags.SW1));
+        Serial.println("FIN CALEFACTOR FORZADO " + String(!ProgFlags.SW1));
+     
+      } else {
+        if((ProgFlags.RELAYS & 0x01) == ProgFlags.SW1){
+          WriteRelayNumber(RELAY_CALEFACTOR, ProgFlags.SW1); 
+          Serial.println("CALEFACTOR FORZADO " + String(!ProgFlags.SW1));
+        }
       }
     }
   }
    
-  if(swx!=sw1)
-  {
+  if(swx!=sw1){
     sw1=swx;
+    ProgFlags.SW1=sw1;
     WriteRelayNumber(RELAY_CALEFACTOR, sw1); 
     Serial.println("CALEFACTOR " + String(sw1));
   }
- 
-  if(temp>maxtemp){
-    if(millis()<TimerEnfriador+((CYCLE_ENFRIADOR * DTCY_Enfriador)/100)){
-      swx=1;
+//HUMIDIFICADOR 
+  swx=sw2;
+  if(ProgFlags.SW2==sw2){  // Automatico       
+    if(hum<minhum){
+      if(millis()<TimerHumidificador+((CYCLE_HUMIDIFICADOR * DTCY_Humidificador)/100)){
+        swx=1;
+      } else {
+        swx=0;
+      }
+      if(millis()>=TimerHumidificador+CYCLE_HUMIDIFICADOR){
+        if(hum<minhum){
+          if(DTCY_Humidificador<=95) {
+            DTCY_Humidificador+=5;
+          }
+        } else {
+          if(DTCY_Humidificador>=5){
+            DTCY_Humidificador-=5;
+          }
+        }
+        Serial.println("Fin Humidificador ");
+        TimerHumidificador=millis();
+      }
     } else {
+      TimerHumidificador=millis();
       swx=0;
     }
-    if(millis()>=TimerEnfriador+CYCLE_ENFRIADOR){
-      if(temp>maxtemp){
-        if(DTCY_Enfriador<=95) {
-          DTCY_Enfriador+=5;
-        }
+    ProgFlags.SW2=swx;
+  } else {
+    if(millis()-TimerHumidificador>CYCLE_HUMIDIFICADOR){
+      TimerHumidificador=millis();
+    } else {
+      if(millis()-TimerHumidificador>CYCLE_HUMIDIFICADOR/2)
+      {
+        ProgFlags.SW2=sw2;
       } else {
-        if(DTCY_Enfriador>=5){
-          DTCY_Enfriador-=5;
+        if((ProgFlags.RELAYS & 0x02)>>1 == ProgFlags.SW2){
+          WriteRelayNumber(RELAY_HUMIDIFICADOR, ProgFlags.SW2); 
+          Serial.println("HUMIDIFICADOR FORZADO " + String(!ProgFlags.SW2));
         }
       }
-      Serial.println("Fin Enfriador ");
-      TimerEnfriador=millis();
     }
-  } else {
-    TimerEnfriador=millis();
-    swx=0;
   }
-  if(swx!=sw4)
-  {
+   
+  if(swx!=sw2) {
+    sw2=swx;
+    ProgFlags.SW2=sw2;
+    WriteRelayNumber(RELAY_HUMIDIFICADOR, sw2); 
+    Serial.println("HUMIDIFICADOR " + String(sw2));
+  }
+
+ //VENTILADOR
+  swx=sw3;
+  if(ProgFlags.SW3==sw3){  // Automatico       
+    if(co2>maxco2){
+      if(millis()<TimerVentilador+((CYCLE_VENTILADOR * DTCY_Ventilador)/100)){
+        swx=1;
+      } else {
+        swx=0;
+      }
+      if(millis()>=TimerVentilador+CYCLE_VENTILADOR){
+        if(co2>maxco2){
+          if(DTCY_Ventilador<=95) {
+            DTCY_Ventilador+=5;
+          }
+        } else {
+          if(DTCY_Ventilador>=5){
+            DTCY_Ventilador-=5;
+          }
+        }
+        Serial.println("Fin Ventilador ");
+        TimerVentilador=millis();
+      }
+    } else {
+      TimerVentilador=millis();
+      swx=0;
+    }
+    ProgFlags.SW3=swx;
+  } else {
+    if(millis()-TimerVentilador>CYCLE_VENTILADOR){
+      TimerVentilador=millis();
+    } else {
+      if(millis()-TimerVentilador>CYCLE_VENTILADOR/2)
+      {
+        ProgFlags.SW3=sw3;
+      } else {
+        if((ProgFlags.RELAYS & 0x04)>>2 == ProgFlags.SW3){
+          WriteRelayNumber(RELAY_VENTILADOR, ProgFlags.SW3); 
+          Serial.println("VENTILADOR FORZADO " + String(!ProgFlags.SW3));
+        }
+      }
+    }
+  }
+   
+  if(swx!=sw3) {
+    sw3=swx;
+    ProgFlags.SW3=sw3;
+    WriteRelayNumber(RELAY_VENTILADOR, sw3); 
+    Serial.println("VENTILADOR " + String(sw3));
+  }
+
+ 
+ //ENFRIADOR
+  swx=sw4;
+  if(ProgFlags.SW4==sw4){  // Automatico       
+    if(temp>maxtemp){
+      if(millis()<TimerEnfriador+((CYCLE_ENFRIADOR * DTCY_Enfriador)/100)){
+        swx=1;
+      } else {
+        swx=0;
+      }
+      if(millis()>=TimerEnfriador+CYCLE_ENFRIADOR){
+        if(temp>maxtemp){
+          if(DTCY_Enfriador<=95) {
+            DTCY_Enfriador+=5;
+          }
+        } else {
+          if(DTCY_Enfriador>=5){
+            DTCY_Enfriador-=5;
+          }
+        }
+        Serial.println("Fin Enfriador ");
+        TimerEnfriador=millis();
+      }
+    } else {
+      TimerEnfriador=millis();
+      swx=0;
+    }
+    ProgFlags.SW4=swx;
+  } else {
+    if(millis()-TimerEnfriador>CYCLE_ENFRIADOR){
+      TimerEnfriador=millis();
+    } else {
+      if(millis()-TimerEnfriador>CYCLE_ENFRIADOR/2){
+        ProgFlags.SW4=sw4;
+      } else {
+        if((ProgFlags.RELAYS & 0x08)>>3 == ProgFlags.SW4){
+          WriteRelayNumber(RELAY_ENFRIADOR, ProgFlags.SW4); 
+          Serial.println("ENFRIADOR FORZADO " + String(!ProgFlags.SW4));
+        }
+      }
+    }
+  }
+   
+  if(swx!=sw4) {
     sw4=swx;
+    ProgFlags.SW4=sw4;
     WriteRelayNumber(RELAY_ENFRIADOR, sw4); 
     Serial.println("ENFRIADOR " + String(sw4));
   }
-  
   ProgFlags.VCIN=M5.Axp.isACIN();
  
 }
@@ -1113,33 +1199,23 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void reconnect() {
-
-//	while (!mqttclient.connected()) {
-		Serial.print("Intentando conexion MQTT SSL");
-		// we create client id
-		String clientId = "esp32_ia_";
-		clientId += String(random(0xffff), HEX);
-		// Trying SSL MQTT connection
-		if (mqttclient.connect(clientId.c_str(),mqtt_user,mqtt_pass)) {
-			Serial.println("Connected!");
-			// We subscribe to topic
-
-			mqttclient.subscribe(device_topic_subscribe);
-
-		} else {
-			Serial.print("fallo :( con error -> ");
-			Serial.print(mqttclient.state());
-			Serial.println(" Intentamos de nuevo en 5 segundos");
-
-		}
-//	}
+	Serial.print("Intentando conexion MQTT SSL");
+	String clientId = "esp32_ia_";                                        // we create client id
+  clientId += String(random(0xffff), HEX);
+	if (mqttclient.connect(clientId.c_str(),mqtt_user,mqtt_pass)) {       // Trying SSL MQTT connection
+		Serial.println("Connected!");
+		mqttclient.subscribe(device_topic_subscribe);                       // We subscribe to topic
+	} else {
+		Serial.print("fallo :( con error -> ");
+		Serial.print(mqttclient.state());
+		Serial.println(" Intentamos de nuevo en 5 segundos");
+	}
 }
 
 //funciÃ³n para obtener el tÃ³pico perteneciente a este dispositivo
+
 bool get_topic(int length){
-
   Serial.println("\nIniciando conexion segura para obtener topico raiz...");
-
   if (!client2.connect(server, 443)) {
     Serial.println("Fallo conexion!");
   }else {
@@ -1152,9 +1228,7 @@ bool get_topic(int length){
                  "Content-Length: " + String (data.length()) + "\r\n\r\n" +\
                  data );
     client2.print(HTML);
-
     Serial.println("Solicitud enviada - ok");
-
     while (client2.connected()) {
       String line = client2.readStringUntil('\n');
       if (line == "\r") {
@@ -1162,7 +1236,6 @@ bool get_topic(int length){
         break;
       }
     }
-
     String line;
     while(client2.available()){
       line += client2.readStringUntil('\n');
@@ -1170,50 +1243,38 @@ bool get_topic(int length){
     String temporal_topic = s.separa(line,'#',1);
     String temporal_user = s.separa(line,'#',2);
     String temporal_password = s.separa(line,'#',3);
-
-
-
     Serial.println("El topico es: " + temporal_topic);
     Serial.println("El user MQTT es: " + temporal_user);
     Serial.println("La pass MQTT es: " + temporal_password);
     Serial.println("La cuenta del topico obtenido es: " + String(temporal_topic.length()));
-
     if (temporal_topic.length()==length){
       Serial.println("El largo del topico es el esperado: " + String(temporal_topic.length()));
-
       String temporal_topic_subscribe = temporal_topic + "/actions/#";
       temporal_topic_subscribe.toCharArray(device_topic_subscribe,40);
       Serial.println(device_topic_subscribe);
       String temporal_topic_publish = temporal_topic + "/data";
       temporal_topic_publish.toCharArray(device_topic_publish_data,40);
-      
       temporal_topic_publish = temporal_topic + "/limits";
       temporal_topic_publish.toCharArray(device_topic_publish_limits,40);
-      
       temporal_user.toCharArray(mqtt_user,20);
       temporal_password.toCharArray(mqtt_pass,20);
-
       client2.stop();
       return true;
     }else{
       client2.stop();
       return false;
     }
-
   }
 }
 
 
 void send_to_database(){
-
   Serial.println("Iniciando conexion segura para enviar a base de datos...");
-
   if (!client2.connect(server, 443)) {
     Serial.println("Fallo conexion!");
   }else {
     Serial.println("Conectados a servidor para insertar en db - ok");
     // Make a HTTP request:
-    
     String data = "idp="+insert_password+"&sn="+serial_number+"&temp="+String(temp)+"&hum="+String((int)hum)+"&co2="+String((int)co2)+"&ip="+MyIp;
     Serial.print("POST DATA ");
     Serial.println(data);
@@ -1223,50 +1284,37 @@ void send_to_database(){
                  "Content-Type: application/x-www-form-urlencoded"+ "\r\n" +\
                  "Content-Length: " + String (data.length()) + "\r\n\r\n" +\
                  data );
-
     client2.print(HTML);
     Serial.println("Solicitud enviada - ok");
-
     while (client2.connected()) {
       String line = client2.readStringUntil('\n');
       if (line == "\r") {
         Serial.println("Headers recibidos - ok");
-        Serial.println(line);
         break;
       }
     }
-    
-    
     String line;
     while(client2.available()){
       line += client2.readStringUntil('\n');
     }
     Serial.println("Response  ");
-    Serial.println(line);
     client2.stop();
-
-    }
-
   }
-void ShowSensorValues(short int X, short int Y)
-{
+}
+  
+void ShowSensorValues(short int X, short int Y){
   M5.Lcd.setTextColor(TFT_WHITE, LCD_BG);
-
   M5.Lcd.drawString(String ((int)temp), 10, 30, 8);
   M5.Lcd.drawString("C", 120, 80, 4);
   M5.Lcd.drawString("Temperatura", 40, 110, 2);
-  
   M5.Lcd.drawString(String ((int)hum), 160, 30, 8);
   M5.Lcd.drawString("%", 270, 80, 4);
   M5.Lcd.drawString("Humedad", 180, 110, 2);
-
   M5.Lcd.drawString(String ((int)co2), 10, 130, 8);
   M5.Lcd.drawString("ppm", 250, 160, 4);
   M5.Lcd.drawString("CO2", 150, 220, 2);
-
 }
 void ShowTopBar(void){
-  
   M5.Lcd.setTextColor(WHITE, TBI_BG);
   Batery=CheckBat();
   String bat=String(Batery)+" %";
@@ -1275,15 +1323,12 @@ void ShowTopBar(void){
   M5.Lcd.fillRect(267,3,5,2,WHITE);
   bat="SN: "+String(chipId);
   M5.Lcd.drawString(bat, 3,3, 2);
-  
 }
-bool SensorTrueValue(float ReadValue,float HL,float LL)
-{
+bool SensorTrueValue(float ReadValue,float HL,float LL){
   if((ReadValue<=HL)&&(ReadValue>=LL))
     return true;
   else
     return false;
-  
 }
 
 int CheckBat(void){
@@ -1292,42 +1337,30 @@ int CheckBat(void){
   return (int)batPercentage;
 }
 
-void ShowActuatorsValues(short int X, short int Y)
-{
+void ShowActuatorsValues(short int X, short int Y){
   M5.Lcd.setTextColor(TFT_WHITE, LCD_BG);
-  M5.Lcd.drawString("OUT1", 10, 50, 4);
-  SwitchOnOff(20,80,sw1);
-  M5.Lcd.drawString("OUT2", 90, 50, 4);
-  SwitchOnOff(100,80,sw2);
-  M5.Lcd.drawString("OUT3", 170, 50, 4);
-  SwitchOnOff(180,80,sw3);
-  M5.Lcd.drawString("OUT4", 250, 50, 4);
-  SwitchOnOff(260,80,sw4);
-  M5.Lcd.progressBar(10,120,300,20,(maxtemp*100)/255);  
- }
-void SwitchOnOff(unsigned int X,unsigned int Y,bool ON)
-{
-  if(ON)
-  {
+  M5.Lcd.drawString("Calefactor",     10,  40, 4);  SwitchOnOff(220,40,sw1);
+  M5.Lcd.drawString("Humidificador",  10,  90, 4);  SwitchOnOff(220,90,sw2);
+  M5.Lcd.drawString("Ventilador",     10, 140, 4);  SwitchOnOff(220,140,sw3);
+  M5.Lcd.drawString("Enfriador",      10, 190, 4);  SwitchOnOff(220,190,sw4);
+}
+
+void SwitchOnOff(unsigned int X,unsigned int Y,bool ON){
+  if(ON){
     M5.Lcd.fillRect(X,Y,50,20,TBI_BG);
     M5.Lcd.fillRect(X+33,Y+3,14,14,WHITE);
-  }
-  else
-  {
+  } else {
     M5.Lcd.fillRect(X,Y,50,20,0xDEDB);
     M5.Lcd.fillRect(X+3,Y+3,14,14,WHITE);
   }
-    
 }
 
 
-bool GetExternalIP()
-{
+bool GetExternalIP(){
   WiFiClient client;
   if (!client.connect("api.ipify.org", 80)) {
     Serial.println("Failed to connect with 'api.ipify.org' !");
-  }
-  else {
+  } else {
     int timeout = millis() + 5000;
     client.print("GET /?format=json HTTP/1.1\r\nHost: api.ipify.org\r\n\r\n");
     while (client.available() == 0) {
@@ -1337,31 +1370,26 @@ bool GetExternalIP()
         return false;
       }
     }
-    
     String line;
     while(client.available()){
       line += client.readStringUntil('\n');
     }
     if (line.startsWith("HTTP/1.1 200 OK")) {      //GET nets on field
-        int index=line.lastIndexOf("\"");
-        line.remove(index);
-        index=line.lastIndexOf("\"");
-        MyIp=line.substring(index+1);
-        Serial.print("MYIP:  ");
-        Serial.println(MyIp);
-        Serial.println(line);
-         
-      }
-    else
-    {
+      int index=line.lastIndexOf("\"");
+      line.remove(index);
+      index=line.lastIndexOf("\"");
+      MyIp=line.substring(index+1);
+      Serial.print("MYIP:  ");
+      Serial.println(MyIp);
+      Serial.println(line);
+    } else {
       return false;
     }
   }
   return true;
 }
 
-bool Save_String(unsigned int ADR, char DATA[])
-{
+bool Save_String(unsigned int ADR, char DATA[]){
   for(int a=0;a<NET_NAME_LENGTH;a++){
     EEPROM.write(ADR+a, DATA[a]);
   }
@@ -1370,8 +1398,7 @@ bool Save_String(unsigned int ADR, char DATA[])
   Serial.println(DATA);
   return true;
 }
-bool Read_String(unsigned int ADR, char DATA[])
-{
+bool Read_String(unsigned int ADR, char DATA[]){
   for(int a=0;a<NET_NAME_LENGTH;a++){
     DATA[a]=EEPROM.read(ADR+a);
   }
@@ -1379,8 +1406,7 @@ bool Read_String(unsigned int ADR, char DATA[])
   Serial.println(DATA);
   return true;
 }
-bool Save_Int(unsigned int ADR, int &DATA)
-{
+bool Save_Int(unsigned int ADR, int &DATA){
   char buf[10] = {0};
   itoa((int)DATA, buf, 10);
    
@@ -1392,24 +1418,19 @@ bool Save_Int(unsigned int ADR, int &DATA)
   Serial.println(DATA);
   return true;
 }
-bool Read_Int(unsigned int ADR, int &DATA)
-{
+
+bool Read_Int(unsigned int ADR, int &DATA){
   char buf[10] = {0};
-  Serial.print("EEPROM READ INT:  ");
   for(int a=0;a<10;a++){
     buf[a]=EEPROM.read(ADR+a);
- //   Serial.print(buf[a]);
   }
-  delay(2000);
   DATA= atoi( buf);
-  
   Serial.print("EEPROM READ RESULT:  ");
   Serial.println(DATA);
   return true;
 }
 
-void SendSwxBT(void)
-{
+void SendSwxBT(void){
   if (deviceConnected) {
     String OUT;
     char txString[60];
@@ -1420,60 +1441,42 @@ void SendSwxBT(void)
     OUT+=","+String (sw3);
     OUT+=","+String (sw2);
     OUT+=","+String (sw1);
-    
-    
     OUT.toCharArray(txString,60);
-    
     Serial.print("SENDING  BT  ");
     pTxCharacteristic->setValue(txString);
     pTxCharacteristic->notify();
     Serial.println(txString);
   }
-  
 } 
-void SendSSIDBT(void)
-{
+void SendSSIDBT(void){
   if (deviceConnected) {
-    
     Serial.print("SENDING  BT  ");
     pTxCharacteristic->setValue(ssid);
     pTxCharacteristic->notify();
     Serial.println(ssid);
-  }
-  else
-  {
+  } else {
       Serial.println("SENDING  BT  NOT CONNECTED");
-  
   }
 } 
-void ShowActuatorsPasteur()
-{
+void ShowActuatorsPasteur(){
   unsigned int horas,minutos,segundos;
   horas=EfectiveTimeSec/3600;
   minutos=(EfectiveTimeSec%3600)/60;
   segundos=(EfectiveTimeSec%3600)%60;
-  
- 
   M5.Lcd.setTextColor(TFT_WHITE, LCD_BG);
   String tiempo="";
-  if(ProgFlags.PT100Cal)
-  {
-    if((PT100FinalTemp<150)&&(PT100FinalTemp>-9))
-    {
+  if(ProgFlags.PT100Cal){
+    if((PT100FinalTemp<150)&&(PT100FinalTemp>-9)){
       // temp=PT100FinalTemp;
       if(PT100FinalTemp<100)
         tiempo=tiempo+"  ";
       if(PT100FinalTemp<10)
         tiempo=tiempo+"  ";
       tiempo=tiempo+String ((int)PT100FinalTemp);
-    }
-    else
-    {
+    } else {
           tiempo="---";
     }
-  }
-  else
-  {
+  } else{
     tiempo="Cal";
   }
   M5.Lcd.drawString(tiempo, 40, 30, 8);
@@ -1502,52 +1505,44 @@ void ShowActuatorsPasteur()
   if(horas>=2)
     Btna_fcn();
   
-      
 }
-void RelayBoard(unsigned int RELE,bool ESTADO)
-{
+void RelayBoard(unsigned int RELE,bool ESTADO){
   if(ESTADO==true)
     digitalWrite(RELE, HIGH);
   else
     digitalWrite(RELE, LOW);
-  
   if(RELE==OPTICO)
     ProgFlags.ROP=ESTADO;
   if(RELE==MECANICO)
     ProgFlags.RMEC=ESTADO;
-  
 }
 
-void WriteRelayReg( int regAddr, int data )
-{
+void WriteRelayReg( int regAddr, int data ){
     Wire.beginTransmission(0x26);
     Wire.write(regAddr);
     Wire.write(data);
     Wire.endTransmission();
-    Serial.printf("[ W ] %02X : %02X. \r\n", regAddr, data);
 }
 
-int readRelayReg(int regAddr)
-{
+int readRelayReg(int regAddr){
     Wire.beginTransmission(0x26);
     Wire.write(regAddr);
     Wire.endTransmission();
     Wire.requestFrom(0x26, 1);
     int data = Wire.read() & 0x00ff;
-    Serial.printf("[ R ] %02X : %02X. \r\n", regAddr, data);
     return data;
 }
 
-void WriteRelayNumber( int number, int state )
-{
+void WriteRelayNumber( int number, int state ){
     int StateFromDevice = readRelayReg(0x11);
-    if( state == 0 )
-    {
-        StateFromDevice &= ~( 0x01 << number );
-    }
-    else
-    {
-        StateFromDevice |= ( 0x01 << number );
+    byte softrelay=ProgFlags.RELAYS;
+    if( state == 0 ) {
+      softrelay |= ( 0x01 << number );
+      StateFromDevice &= ~( 0x01 << number );
+    } else {
+      softrelay &= ~( 0x01 << number );
+      StateFromDevice |= ( 0x01 << number );
     }
     WriteRelayReg(0x11,StateFromDevice);
+    ProgFlags.RELAYS=softrelay;
 }
